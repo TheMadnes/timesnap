@@ -1,0 +1,1370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TimeSnap — Interactive Prototype</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: #060a12;
+  display: flex; justify-content: center; align-items: center;
+  min-height: 100vh; font-family: 'Inter', -apple-system, sans-serif;
+  color: #e2e8f0;
+  overflow: hidden;
+}
+
+/* ── Phone Frame ── */
+.phone-frame {
+  width: 393px; height: 852px;
+  border-radius: 55px;
+  background: #0a0e17;
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 2px #1a1f2e,
+    0 0 0 4px #0d1117,
+    0 0 80px rgba(0,212,170,0.08),
+    0 40px 100px rgba(0,0,0,0.6);
+}
+
+/* Dynamic Island */
+.dynamic-island {
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+  width: 126px; height: 37px; background: #000; border-radius: 20px;
+  z-index: 1000;
+}
+
+/* Status bar */
+.status-bar {
+  position: absolute; top: 0; left: 0; right: 0; height: 59px;
+  display: flex; justify-content: space-between; align-items: flex-end;
+  padding: 0 32px 8px; z-index: 999;
+  font-size: 14px; font-weight: 600;
+}
+.status-bar .time { font-size: 16px; font-weight: 700; }
+.status-bar .icons { display: flex; gap: 6px; font-size: 13px; }
+
+/* ── Screens Container ── */
+.screens-container {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  overflow: hidden;
+}
+
+.screen {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  transform: scale(0.97);
+  overflow-y: auto; overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.screen::-webkit-scrollbar { display: none; }
+.screen.active {
+  opacity: 1; pointer-events: auto; transform: scale(1);
+}
+.screen.slide-right {
+  transform: translateX(20px) scale(0.98); opacity: 0;
+}
+
+/* ── Tab Bar ── */
+.tab-bar {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 88px;
+  background: rgba(10,14,23,0.82);
+  backdrop-filter: blur(40px) saturate(1.8);
+  -webkit-backdrop-filter: blur(40px) saturate(1.8);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex; justify-content: space-around; align-items: flex-start;
+  padding-top: 10px; z-index: 998;
+}
+.tab-item {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: all 0.2s;
+  min-width: 64px;
+}
+.tab-item .tab-icon { font-size: 24px; transition: transform 0.2s; }
+.tab-item .tab-label { font-size: 10px; font-weight: 500; color: #4a5568; transition: color 0.2s; }
+.tab-item.active .tab-icon { transform: scale(1.1); }
+.tab-item.active .tab-label { color: #00D4AA; }
+
+/* ── Glass Card ── */
+.glass-card {
+  background: rgba(17,24,39,0.7);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 20px;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.glass-card:active { transform: scale(0.98); }
+
+/* ── Accent Colors ── */
+:root {
+  --teal: #00D4AA;
+  --orange: #FF8C42;
+  --bg: #0a0e17;
+  --card: #111827;
+  --card-glass: rgba(17,24,39,0.7);
+  --border: rgba(255,255,255,0.06);
+  --text: #e2e8f0;
+  --text-dim: #64748b;
+  --text-mid: #94a3b8;
+}
+
+/* ── Screen Padding ── */
+.screen-content {
+  padding: 70px 20px 100px;
+}
+
+/* ════════════════════════════════
+   1. HOME SCREEN
+   ════════════════════════════════ */
+.home-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 24px;
+}
+.home-header h1 {
+  font-size: 32px; font-weight: 800;
+  background: linear-gradient(135deg, #00D4AA, #00b894);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.home-header .add-btn {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(0,212,170,0.15); border: 1px solid rgba(0,212,170,0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; color: var(--teal); cursor: pointer;
+  transition: all 0.2s;
+}
+.home-header .add-btn:hover { background: rgba(0,212,170,0.25); }
+
+.search-bar {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 14px; padding: 12px 16px;
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 20px;
+}
+.search-bar input {
+  background: none; border: none; outline: none;
+  color: var(--text); font-size: 15px; width: 100%; font-family: inherit;
+}
+.search-bar input::placeholder { color: #374151; }
+
+.project-card {
+  display: flex; gap: 14px; padding: 14px;
+  margin-bottom: 12px; cursor: pointer;
+}
+.project-thumb {
+  width: 68px; height: 68px; border-radius: 14px;
+  flex-shrink: 0; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px;
+}
+.project-info { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+.project-info h3 { font-size: 16px; font-weight: 600; }
+.project-info .project-meta {
+  font-size: 12px; color: var(--text-dim);
+  display: flex; gap: 12px; align-items: center;
+}
+.project-info .project-meta span { display: flex; align-items: center; gap: 4px; }
+.project-arrow { display: flex; align-items: center; color: #374151; font-size: 18px; }
+
+.section-label {
+  font-size: 13px; font-weight: 600; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 1.5px;
+  margin-bottom: 12px; margin-top: 8px;
+}
+
+/* ════════════════════════════════
+   2. PROJECT VIEW
+   ════════════════════════════════ */
+.breadcrumb {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; color: var(--text-dim); margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.breadcrumb .bc-item { cursor: pointer; transition: color 0.2s; }
+.breadcrumb .bc-item:hover { color: var(--teal); }
+.breadcrumb .bc-item.active { color: var(--text); font-weight: 600; }
+.breadcrumb .bc-sep { color: #2d3748; }
+
+.back-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 15px; color: var(--teal); cursor: pointer;
+  margin-bottom: 16px; font-weight: 500;
+}
+
+.project-hero {
+  padding: 20px; margin-bottom: 16px;
+  text-align: center;
+}
+.project-hero h2 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+.project-hero .hero-meta { font-size: 13px; color: var(--text-dim); }
+
+.project-stats {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 10px;
+  margin-bottom: 20px;
+}
+.stat-box {
+  background: var(--card-glass);
+  border: 1px solid var(--border);
+  border-radius: 14px; padding: 14px; text-align: center;
+}
+.stat-box .stat-val { font-size: 24px; font-weight: 800; color: var(--teal); }
+.stat-box .stat-label { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+
+.folder-tree { margin-top: 8px; }
+.folder-item {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  cursor: pointer; display: flex; align-items: center; gap: 10px;
+  transition: background 0.15s;
+}
+.folder-item:hover { background: rgba(255,255,255,0.02); }
+.folder-item .folder-icon { font-size: 20px; }
+.folder-item .folder-name { flex: 1; font-size: 15px; font-weight: 500; }
+.folder-item .folder-count { font-size: 12px; color: var(--text-dim); background: rgba(255,255,255,0.05); padding: 3px 8px; border-radius: 8px; }
+.folder-item .folder-chevron { color: #374151; font-size: 14px; transition: transform 0.2s; }
+.folder-item.expanded .folder-chevron { transform: rotate(90deg); }
+
+.subfolder-list {
+  max-height: 0; overflow: hidden;
+  transition: max-height 0.3s ease;
+  padding-left: 20px;
+}
+.subfolder-list.open { max-height: 500px; }
+
+.folder-actions {
+  display: flex; gap: 10px; padding: 16px 0;
+}
+.folder-action-btn {
+  flex: 1; padding: 12px;
+  background: rgba(0,212,170,0.1);
+  border: 1px solid rgba(0,212,170,0.2);
+  border-radius: 14px; text-align: center;
+  font-size: 13px; font-weight: 600; color: var(--teal);
+  cursor: pointer; transition: all 0.2s;
+}
+.folder-action-btn:hover { background: rgba(0,212,170,0.18); }
+.folder-action-btn.orange {
+  background: rgba(255,140,66,0.1);
+  border-color: rgba(255,140,66,0.2);
+  color: var(--orange);
+}
+
+/* ════════════════════════════════
+   3. CAMERA SCREEN
+   ════════════════════════════════ */
+#screen-camera { background: #000; }
+.camera-viewfinder {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(180deg, #0a0e17 0%, #111827 30%, #0d1520 60%, #080c14 100%);
+  display: flex; flex-direction: column;
+}
+.camera-top-bar {
+  padding: 64px 20px 12px;
+  display: flex; justify-content: space-between; align-items: center;
+  background: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, transparent 100%);
+  z-index: 10;
+}
+.camera-folder-path {
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px; padding: 6px 12px;
+  font-size: 12px; color: var(--text-mid);
+  max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.camera-folder-path span { color: var(--teal); font-weight: 600; }
+.camera-settings-btn {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(255,255,255,0.1);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; cursor: pointer;
+}
+
+.camera-center {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.camera-grid {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(3,1fr);
+  opacity: 0.1; pointer-events: none;
+}
+.camera-grid > div { border: 1px solid rgba(255,255,255,0.3); }
+.camera-crosshair {
+  width: 40px; height: 40px; position: relative;
+  opacity: 0.3;
+}
+.camera-crosshair::before, .camera-crosshair::after {
+  content: ''; position: absolute;
+  background: white;
+}
+.camera-crosshair::before { width: 1px; height: 100%; left: 50%; }
+.camera-crosshair::after { height: 1px; width: 100%; top: 50%; }
+
+.camera-watermark {
+  position: absolute; bottom: 20px; left: 20px;
+  font-size: 11px; color: rgba(255,255,255,0.25);
+  line-height: 1.5;
+}
+
+.camera-bottom {
+  padding: 16px 20px 100px;
+  background: linear-gradient(0deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+}
+.camera-controls {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.camera-last-photo {
+  width: 52px; height: 52px; border-radius: 12px;
+  border: 2px solid rgba(255,255,255,0.2);
+  overflow: hidden; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  background: rgba(255,255,255,0.05);
+  position: relative;
+}
+.photo-counter-badge {
+  position: absolute; top: -6px; right: -6px;
+  background: var(--teal); color: #000;
+  font-size: 10px; font-weight: 700;
+  width: 20px; height: 20px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.capture-btn {
+  width: 76px; height: 76px; border-radius: 50%;
+  border: 4px solid rgba(255,255,255,0.8);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; position: relative;
+  transition: all 0.15s;
+}
+.capture-btn::after {
+  content: ''; width: 62px; height: 62px;
+  border-radius: 50%; background: white;
+  transition: all 0.15s;
+}
+.capture-btn:active::after {
+  width: 56px; height: 56px; background: #ccc;
+}
+.capture-btn:active { transform: scale(0.95); }
+
+.camera-right-controls {
+  display: flex; flex-direction: column; gap: 16px;
+  align-items: center;
+}
+.cam-toggle {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: rgba(255,255,255,0.1);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; cursor: pointer;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.08);
+  transition: all 0.2s;
+}
+.cam-toggle:active { background: rgba(255,255,255,0.2); }
+.cam-toggle.flash-on { background: rgba(255,200,0,0.2); border-color: rgba(255,200,0,0.4); }
+
+.camera-mode-strip {
+  display: flex; gap: 20px; justify-content: center;
+  padding: 12px 0 0;
+  font-size: 13px; font-weight: 500;
+}
+.camera-mode-strip span { color: #555; cursor: pointer; transition: color 0.2s; }
+.camera-mode-strip span.active { color: #FFD60A; }
+
+/* ════════════════════════════════
+   4. TEMPLATES SCREEN
+   ════════════════════════════════ */
+.templates-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 20px;
+}
+.templates-header h1 { font-size: 28px; font-weight: 800; }
+
+.template-card {
+  padding: 18px; margin-bottom: 12px; cursor: pointer;
+}
+.template-card-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-bottom: 12px;
+}
+.template-card-header h3 { font-size: 17px; font-weight: 600; }
+.template-badge {
+  font-size: 11px; font-weight: 600; padding: 3px 10px;
+  border-radius: 8px;
+}
+.template-badge.pro { background: rgba(255,140,66,0.15); color: var(--orange); }
+.template-badge.free { background: rgba(0,212,170,0.15); color: var(--teal); }
+
+.template-hierarchy {
+  font-size: 13px; color: var(--text-dim); line-height: 1.8;
+  padding-left: 4px; margin-bottom: 12px;
+}
+.template-hierarchy .h-item { display: flex; align-items: center; gap: 6px; }
+.template-hierarchy .h-indent { padding-left: 16px; }
+.template-hierarchy .h-indent2 { padding-left: 32px; }
+
+.template-settings {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.template-tag {
+  font-size: 11px; padding: 4px 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text-mid);
+}
+
+/* ════════════════════════════════
+   5. NEW PROJECT FROM TEMPLATE
+   ════════════════════════════════ */
+.modal-overlay {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(10px);
+  z-index: 1001;
+  display: flex; align-items: flex-end;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s;
+}
+.modal-overlay.visible { opacity: 1; pointer-events: auto; }
+
+.modal-sheet {
+  width: 100%; background: #111827;
+  border-radius: 24px 24px 0 0;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 12px 20px 40px;
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.32,0.72,0,1);
+}
+.modal-overlay.visible .modal-sheet { transform: translateY(0); }
+.modal-handle {
+  width: 36px; height: 4px; border-radius: 2px;
+  background: rgba(255,255,255,0.15);
+  margin: 0 auto 20px;
+}
+.modal-sheet h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+.modal-sheet .modal-sub { font-size: 13px; color: var(--text-dim); margin-bottom: 20px; }
+
+.form-group { margin-bottom: 18px; }
+.form-group label {
+  display: block; font-size: 13px; font-weight: 600;
+  color: var(--text-mid); margin-bottom: 8px;
+}
+.form-group input, .form-group select {
+  width: 100%; padding: 14px 16px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 14px; color: var(--text);
+  font-size: 16px; font-family: inherit;
+  outline: none; transition: border-color 0.2s;
+}
+.form-group input:focus { border-color: rgba(0,212,170,0.4); }
+.form-group select option { background: #111827; }
+
+.btn-primary {
+  width: 100%; padding: 16px;
+  background: linear-gradient(135deg, #00D4AA, #00b894);
+  border: none; border-radius: 16px;
+  color: #000; font-size: 16px; font-weight: 700;
+  font-family: inherit; cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-primary:active { transform: scale(0.98); opacity: 0.9; }
+.btn-secondary {
+  width: 100%; padding: 14px; margin-top: 10px;
+  background: none; border: 1px solid var(--border);
+  border-radius: 16px; color: var(--text-dim);
+  font-size: 15px; font-family: inherit; cursor: pointer;
+}
+
+/* ════════════════════════════════
+   6. PHOTO GALLERY
+   ════════════════════════════════ */
+.gallery-grid {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 3px;
+  margin-top: 12px;
+}
+.gallery-item {
+  aspect-ratio: 1; border-radius: 4px; overflow: hidden;
+  position: relative; cursor: pointer;
+  transition: transform 0.15s;
+}
+.gallery-item:active { transform: scale(0.96); }
+.gallery-item .gallery-bg {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32px;
+}
+.gallery-item .gallery-overlay {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: linear-gradient(transparent, rgba(0,0,0,0.7));
+  padding: 6px; display: flex; justify-content: space-between;
+  align-items: flex-end;
+}
+.gallery-item .gallery-time { font-size: 9px; color: rgba(255,255,255,0.7); }
+.gallery-item .gallery-pin { font-size: 10px; }
+
+/* ════════════════════════════════
+   7. MAP VIEW
+   ════════════════════════════════ */
+#screen-map { background: #0a0e17; }
+.map-container {
+  position: absolute; top: 59px; left: 0; right: 0; bottom: 88px;
+  background: linear-gradient(135deg, #0c1220 0%, #0f1a2a 40%, #0a1018 100%);
+  overflow: hidden;
+}
+.map-grid {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  opacity: 0.06;
+  background-image:
+    linear-gradient(rgba(0,212,170,0.3) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,170,0.3) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+.map-roads {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+}
+.map-road {
+  position: absolute; background: rgba(255,255,255,0.04); border-radius: 2px;
+}
+
+.map-pin {
+  position: absolute; cursor: pointer;
+  transition: transform 0.2s;
+  z-index: 10;
+}
+.map-pin:hover { transform: scale(1.2); z-index: 20; }
+.map-pin-dot {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4), 0 0 12px rgba(0,212,170,0.3);
+}
+.map-pin-dot.teal { background: var(--teal); }
+.map-pin-dot.orange { background: var(--orange); }
+.map-pin-label {
+  position: absolute; top: -28px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.8); backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.1);
+  padding: 3px 8px; border-radius: 6px;
+  font-size: 10px; white-space: nowrap; color: white;
+  opacity: 0; transition: opacity 0.2s; pointer-events: none;
+}
+.map-pin:hover .map-pin-label { opacity: 1; }
+
+.map-legend {
+  position: absolute; bottom: 16px; left: 16px; right: 16px;
+  background: rgba(17,24,39,0.85);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: 16px; padding: 14px 16px;
+}
+.map-legend h4 { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+.map-legend-items { display: flex; gap: 16px; }
+.map-legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-mid); }
+.map-legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+.map-top-bar {
+  position: absolute; top: 64px; left: 16px; right: 16px;
+  display: flex; gap: 8px; z-index: 20;
+}
+.map-filter-btn {
+  padding: 8px 14px;
+  background: rgba(17,24,39,0.85);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: 12px; font-size: 13px; font-weight: 500;
+  color: var(--text-mid); cursor: pointer;
+  transition: all 0.2s;
+}
+.map-filter-btn.active { border-color: rgba(0,212,170,0.4); color: var(--teal); }
+
+/* ════════════════════════════════
+   8. EXPORT SCREEN
+   ════════════════════════════════ */
+.export-preview {
+  background: #1a202c;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden; margin-bottom: 16px;
+}
+.export-preview-header {
+  padding: 16px; background: rgba(0,212,170,0.05);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px;
+}
+.export-preview-header .pdf-icon {
+  width: 44px; height: 44px; border-radius: 10px;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 14px; color: white;
+}
+.export-preview-body {
+  padding: 16px; min-height: 160px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.export-preview-line {
+  height: 8px; border-radius: 4px; background: rgba(255,255,255,0.04);
+}
+.export-preview-img-row {
+  display: flex; gap: 6px; margin: 8px 0;
+}
+.export-preview-img {
+  flex: 1; height: 48px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+
+.export-options { display: flex; flex-direction: column; gap: 10px; }
+.export-option {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px;
+  background: var(--card-glass);
+  border: 1px solid var(--border);
+  border-radius: 16px; cursor: pointer;
+  transition: all 0.2s;
+}
+.export-option:active { transform: scale(0.98); }
+.export-option .export-icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+}
+.export-option .export-info { flex: 1; }
+.export-option .export-info h4 { font-size: 15px; font-weight: 600; }
+.export-option .export-info p { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+
+/* ── Animations ── */
+@keyframes pulse-teal {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0,212,170,0.3); }
+  50% { box-shadow: 0 0 0 8px rgba(0,212,170,0); }
+}
+@keyframes flash-capture {
+  0% { opacity: 0; }
+  10% { opacity: 0.6; }
+  100% { opacity: 0; }
+}
+.camera-flash {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: white; opacity: 0; pointer-events: none; z-index: 50;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 0; }
+
+/* ── Checklist ── */
+.checklist-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; margin-bottom: 12px;
+  background: rgba(255,140,66,0.08);
+  border: 1px solid rgba(255,140,66,0.15);
+  border-radius: 12px;
+}
+.checklist-progress {
+  flex: 1; height: 4px; background: rgba(255,255,255,0.06);
+  border-radius: 2px; overflow: hidden;
+}
+.checklist-progress-fill {
+  height: 100%; border-radius: 2px;
+  background: linear-gradient(90deg, var(--orange), #FFB347);
+  transition: width 0.5s;
+}
+.checklist-text { font-size: 12px; color: var(--orange); white-space: nowrap; font-weight: 500; }
+
+/* Gallery sub-screen */
+.gallery-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 4px;
+}
+</style>
+</head>
+<body>
+
+<div class="phone-frame">
+  <div class="dynamic-island"></div>
+  <div class="status-bar">
+    <span class="time">12:14</span>
+    <div class="icons">
+      <span>📶</span>
+      <span>🔋</span>
+    </div>
+  </div>
+
+  <div class="screens-container">
+
+    <!-- ═══ 1. HOME SCREEN ═══ -->
+    <div class="screen active" id="screen-home">
+      <div class="screen-content">
+        <div class="home-header">
+          <h1>TimeSnap</h1>
+          <div class="add-btn" onclick="showNewProjectModal()">+</div>
+        </div>
+
+        <div class="search-bar">
+          <span>🔍</span>
+          <input type="text" placeholder="Search projects...">
+        </div>
+
+        <div class="section-label">Active Projects</div>
+
+        <div class="glass-card project-card" onclick="navigateTo('project')">
+          <div class="project-thumb" style="background:linear-gradient(135deg,#1a3a4a,#0d2030)">🗼</div>
+          <div class="project-info">
+            <h3>AT&T Tower Build — Site 4421</h3>
+            <div class="project-meta">
+              <span>📸 247 photos</span>
+              <span>📅 Today</span>
+            </div>
+          </div>
+          <div class="project-arrow">›</div>
+        </div>
+
+        <div class="glass-card project-card" onclick="navigateTo('project')">
+          <div class="project-thumb" style="background:linear-gradient(135deg,#2a1a3a,#1a0d30)">📡</div>
+          <div class="project-info">
+            <h3>FirstNet Site 7803</h3>
+            <div class="project-meta">
+              <span>📸 89 photos</span>
+              <span>📅 Yesterday</span>
+            </div>
+          </div>
+          <div class="project-arrow">›</div>
+        </div>
+
+        <div class="glass-card project-card">
+          <div class="project-thumb" style="background:linear-gradient(135deg,#1a2a1a,#0d200d)">🔧</div>
+          <div class="project-info">
+            <h3>Antenna Swap — RT550</h3>
+            <div class="project-meta">
+              <span>📸 156 photos</span>
+              <span>📅 Feb 25</span>
+            </div>
+          </div>
+          <div class="project-arrow">›</div>
+        </div>
+
+        <div class="section-label" style="margin-top:24px">Completed</div>
+
+        <div class="glass-card project-card" style="opacity:0.6">
+          <div class="project-thumb" style="background:linear-gradient(135deg,#1a1a1a,#0d0d0d)">✅</div>
+          <div class="project-info">
+            <h3>T-Mobile Decom — Site 3102</h3>
+            <div class="project-meta">
+              <span>📸 312 photos</span>
+              <span>📅 Feb 18</span>
+            </div>
+          </div>
+          <div class="project-arrow">›</div>
+        </div>
+
+        <div class="glass-card project-card" style="opacity:0.6">
+          <div class="project-thumb" style="background:linear-gradient(135deg,#2a2a1a,#1a1a0d)">✅</div>
+          <div class="project-info">
+            <h3>Microwave Link — PHL-019</h3>
+            <div class="project-meta">
+              <span>📸 78 photos</span>
+              <span>📅 Feb 10</span>
+            </div>
+          </div>
+          <div class="project-arrow">›</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ 2. PROJECT VIEW ═══ -->
+    <div class="screen" id="screen-project">
+      <div class="screen-content">
+        <div class="back-btn" onclick="navigateTo('home')">‹ Projects</div>
+
+        <div class="breadcrumb">
+          <span class="bc-item" onclick="navigateTo('home')">Home</span>
+          <span class="bc-sep">›</span>
+          <span class="bc-item active">AT&T Tower Build — Site 4421</span>
+        </div>
+
+        <div class="glass-card project-hero">
+          <h2>🗼 Site 4421</h2>
+          <div class="hero-meta">AT&T Tower Build • Started Feb 20</div>
+        </div>
+
+        <div class="project-stats">
+          <div class="stat-box">
+            <div class="stat-val">247</div>
+            <div class="stat-label">Photos</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-val">12</div>
+            <div class="stat-label">Folders</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-val" style="color:var(--orange)">73%</div>
+            <div class="stat-label">Complete</div>
+          </div>
+        </div>
+
+        <div class="checklist-bar">
+          <span style="font-size:14px">📋</span>
+          <div class="checklist-progress">
+            <div class="checklist-progress-fill" style="width:73%"></div>
+          </div>
+          <span class="checklist-text">11/15 required</span>
+        </div>
+
+        <div class="folder-actions">
+          <div class="folder-action-btn" onclick="navigateTo('camera')">📸 Quick Capture</div>
+          <div class="folder-action-btn orange" onclick="navigateTo('export')">📤 Export</div>
+        </div>
+
+        <div class="section-label">Folder Structure</div>
+
+        <div class="glass-card folder-tree">
+          <div class="folder-item" onclick="toggleFolder(this)">
+            <span class="folder-icon">📁</span>
+            <span class="folder-name">Site Overview</span>
+            <span class="folder-count">32</span>
+            <span class="folder-chevron">›</span>
+          </div>
+          <div class="subfolder-list">
+            <div class="folder-item" onclick="navigateTo('gallery')">
+              <span class="folder-icon">📁</span>
+              <span class="folder-name">Before Photos</span>
+              <span class="folder-count">18</span>
+              <span class="folder-chevron">›</span>
+            </div>
+            <div class="folder-item" onclick="navigateTo('gallery')">
+              <span class="folder-icon">📁</span>
+              <span class="folder-name">After Photos</span>
+              <span class="folder-count">14</span>
+              <span class="folder-chevron">›</span>
+            </div>
+          </div>
+
+          <div class="folder-item" onclick="toggleFolder(this)">
+            <span class="folder-icon">📁</span>
+            <span class="folder-name">Antenna Install</span>
+            <span class="folder-count">86</span>
+            <span class="folder-chevron">›</span>
+          </div>
+          <div class="subfolder-list">
+            <div class="folder-item" onclick="navigateTo('gallery')">
+              <span class="folder-icon">📁</span>
+              <span class="folder-name">Mounting Hardware</span>
+              <span class="folder-count">24</span>
+              <span class="folder-chevron">›</span>
+            </div>
+            <div class="folder-item" onclick="navigateTo('gallery')">
+              <span class="folder-icon">📁</span>
+              <span class="folder-name">Antenna Alignment</span>
+              <span class="folder-count">31</span>
+              <span class="folder-chevron">›</span>
+            </div>
+            <div class="folder-item" onclick="navigateTo('gallery')">
+              <span class="folder-icon">📁</span>
+              <span class="folder-name">Cable Routing</span>
+              <span class="folder-count">31</span>
+              <span class="folder-chevron">›</span>
+            </div>
+          </div>
+
+          <div class="folder-item" onclick="toggleFolder(this)">
+            <span class="folder-icon">📁</span>
+            <span class="folder-name">Equipment Shelter</span>
+            <span class="folder-count">54</span>
+            <span class="folder-chevron">›</span>
+          </div>
+          <div class="subfolder-list">
+            <div class="folder-item" onclick="navigateTo('gallery')">
+              <span class="folder-icon">📁</span>
+              <span class="folder-name">Power Installation</span>
+              <span class="folder-count">28</span>
+              <span class="folder-chevron">›</span>
+            </div>
+            <div class="folder-item" onclick="navigateTo('gallery')">
+              <span class="folder-icon">📁</span>
+              <span class="folder-name">Radio Units</span>
+              <span class="folder-count">26</span>
+              <span class="folder-chevron">›</span>
+            </div>
+          </div>
+
+          <div class="folder-item" onclick="navigateTo('gallery')">
+            <span class="folder-icon">📁</span>
+            <span class="folder-name">Ground & Safety</span>
+            <span class="folder-count">38</span>
+            <span class="folder-chevron">›</span>
+          </div>
+
+          <div class="folder-item" onclick="navigateTo('gallery')">
+            <span class="folder-icon">📁</span>
+            <span class="folder-name">Fiber Runs</span>
+            <span class="folder-count">37</span>
+            <span class="folder-chevron">›</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ 3. CAMERA SCREEN ═══ -->
+    <div class="screen" id="screen-camera">
+      <div class="camera-viewfinder">
+        <div class="camera-flash" id="cameraFlash"></div>
+        <div class="camera-top-bar">
+          <div class="camera-folder-path">
+            📁 <span>Site 4421</span> › Antenna Install › Before
+          </div>
+          <div class="camera-settings-btn">⚙️</div>
+        </div>
+
+        <div class="camera-center">
+          <div class="camera-grid">
+            <div></div><div></div><div></div>
+            <div></div><div></div><div></div>
+            <div></div><div></div><div></div>
+          </div>
+          <div class="camera-crosshair"></div>
+          <div class="camera-watermark">
+            AT&T Tower Build — Site 4421<br>
+            39.9526° N, 75.1652° W<br>
+            Feb 27, 2026 • 12:14 PM
+          </div>
+        </div>
+
+        <div class="camera-bottom">
+          <div class="camera-controls">
+            <div class="camera-last-photo">
+              🗼
+              <div class="photo-counter-badge">247</div>
+            </div>
+            <div class="capture-btn" onclick="capturePhoto()"></div>
+            <div class="camera-right-controls">
+              <div class="cam-toggle" onclick="toggleFlash(this)" title="Flash">⚡</div>
+              <div class="cam-toggle" title="Switch Camera">🔄</div>
+            </div>
+          </div>
+          <div class="camera-mode-strip">
+            <span>BURST</span>
+            <span class="active">PHOTO</span>
+            <span>PANO</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ 4. TEMPLATES SCREEN ═══ -->
+    <div class="screen" id="screen-templates">
+      <div class="screen-content">
+        <div class="templates-header">
+          <h1>Templates</h1>
+          <div class="add-btn" style="width:36px;height:36px;font-size:18px;border-radius:50%;background:rgba(0,212,170,0.15);border:1px solid rgba(0,212,170,0.3);display:flex;align-items:center;justify-content:center;color:var(--teal);cursor:pointer">+</div>
+        </div>
+
+        <div class="glass-card template-card" onclick="showNewProjectModal()">
+          <div class="template-card-header">
+            <h3>🗼 Tower Installation</h3>
+            <span class="template-badge free">Default</span>
+          </div>
+          <div class="template-hierarchy">
+            <div class="h-item">📁 Site Overview</div>
+            <div class="h-item h-indent">📁 Before Photos</div>
+            <div class="h-item h-indent">📁 After Photos</div>
+            <div class="h-item">📁 Antenna Install</div>
+            <div class="h-item h-indent">📁 Mounting • Cable • Alignment</div>
+            <div class="h-item">📁 Equipment Shelter</div>
+            <div class="h-item">📁 Ground & Safety</div>
+          </div>
+          <div class="template-settings">
+            <span class="template-tag">📐 4:3 ratio</span>
+            <span class="template-tag">⚡ Flash auto</span>
+            <span class="template-tag">🏷️ Watermark ON</span>
+            <span class="template-tag">📋 15 required</span>
+          </div>
+        </div>
+
+        <div class="glass-card template-card" onclick="showNewProjectModal()">
+          <div class="template-card-header">
+            <h3>📡 Small Cell Deploy</h3>
+            <span class="template-badge pro">Pro</span>
+          </div>
+          <div class="template-hierarchy">
+            <div class="h-item">📁 Pre-Installation Survey</div>
+            <div class="h-item">📁 Pole/Mount Photos</div>
+            <div class="h-item">📁 Equipment Install</div>
+            <div class="h-item h-indent">📁 Radio • Power • Fiber</div>
+            <div class="h-item">📁 Closeout</div>
+          </div>
+          <div class="template-settings">
+            <span class="template-tag">📐 16:9 ratio</span>
+            <span class="template-tag">⚡ Flash off</span>
+            <span class="template-tag">🏷️ Watermark ON</span>
+            <span class="template-tag">📋 8 required</span>
+          </div>
+        </div>
+
+        <div class="glass-card template-card" onclick="showNewProjectModal()">
+          <div class="template-card-header">
+            <h3>🔧 Maintenance Visit</h3>
+            <span class="template-badge free">Free</span>
+          </div>
+          <div class="template-hierarchy">
+            <div class="h-item">📁 Arrival / Site Access</div>
+            <div class="h-item">📁 Issue Documentation</div>
+            <div class="h-item">📁 Repair Work</div>
+            <div class="h-item">📁 Completion Verification</div>
+          </div>
+          <div class="template-settings">
+            <span class="template-tag">📐 4:3 ratio</span>
+            <span class="template-tag">⚡ Flash auto</span>
+            <span class="template-tag">📋 6 required</span>
+          </div>
+        </div>
+
+        <div class="glass-card template-card" onclick="showNewProjectModal()">
+          <div class="template-card-header">
+            <h3>🏗️ Construction Progress</h3>
+            <span class="template-badge pro">Pro</span>
+          </div>
+          <div class="template-hierarchy">
+            <div class="h-item">📁 Foundation</div>
+            <div class="h-item">📁 Tower Erection</div>
+            <div class="h-item">📁 Equipment Install</div>
+            <div class="h-item">📁 Commissioning</div>
+            <div class="h-item">📁 Final Walkthrough</div>
+          </div>
+          <div class="template-settings">
+            <span class="template-tag">📐 4:3 ratio</span>
+            <span class="template-tag">⚡ Flash auto</span>
+            <span class="template-tag">🏷️ Watermark ON</span>
+            <span class="template-tag">📋 20 required</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ 6. GALLERY ═══ -->
+    <div class="screen" id="screen-gallery">
+      <div class="screen-content">
+        <div class="back-btn" onclick="navigateTo('project')">‹ Back to Project</div>
+        <div class="breadcrumb">
+          <span class="bc-item">Site 4421</span>
+          <span class="bc-sep">›</span>
+          <span class="bc-item">Antenna Install</span>
+          <span class="bc-sep">›</span>
+          <span class="bc-item active">Before Photos</span>
+        </div>
+
+        <div class="gallery-header">
+          <h2 style="font-size:20px;font-weight:700">Before Photos</h2>
+          <span style="font-size:13px;color:var(--text-dim)">18 photos</span>
+        </div>
+
+        <div class="gallery-grid" id="galleryGrid"></div>
+      </div>
+    </div>
+
+    <!-- ═══ 7. MAP VIEW ═══ -->
+    <div class="screen" id="screen-map">
+      <div class="map-container">
+        <div class="map-grid"></div>
+
+        <!-- Stylized roads -->
+        <div class="map-roads">
+          <div class="map-road" style="top:30%;left:0;right:0;height:3px"></div>
+          <div class="map-road" style="top:55%;left:0;right:0;height:2px"></div>
+          <div class="map-road" style="top:75%;left:10%;right:20%;height:2px"></div>
+          <div class="map-road" style="top:0;bottom:0;left:25%;width:3px"></div>
+          <div class="map-road" style="top:0;bottom:0;left:60%;width:2px"></div>
+          <div class="map-road" style="top:20%;bottom:30%;left:80%;width:2px"></div>
+          <div class="map-road" style="top:15%;left:10%;width:200px;height:2px;transform:rotate(25deg)"></div>
+          <div class="map-road" style="top:60%;left:40%;width:150px;height:2px;transform:rotate(-15deg)"></div>
+        </div>
+
+        <!-- Map Pins -->
+        <div class="map-pin" style="top:22%;left:30%">
+          <div class="map-pin-label">Site Overview × 32</div>
+          <div class="map-pin-dot teal"></div>
+        </div>
+        <div class="map-pin" style="top:28%;left:35%">
+          <div class="map-pin-label">Antenna Install × 86</div>
+          <div class="map-pin-dot teal"></div>
+        </div>
+        <div class="map-pin" style="top:40%;left:55%">
+          <div class="map-pin-label">Equipment Shelter × 54</div>
+          <div class="map-pin-dot teal"></div>
+        </div>
+        <div class="map-pin" style="top:35%;left:50%">
+          <div class="map-pin-label">Ground & Safety × 38</div>
+          <div class="map-pin-dot teal"></div>
+        </div>
+        <div class="map-pin" style="top:50%;left:42%">
+          <div class="map-pin-label">Fiber Runs × 37</div>
+          <div class="map-pin-dot teal"></div>
+        </div>
+
+        <!-- Other projects -->
+        <div class="map-pin" style="top:65%;left:20%">
+          <div class="map-pin-label">FirstNet 7803 × 89</div>
+          <div class="map-pin-dot orange"></div>
+        </div>
+        <div class="map-pin" style="top:18%;left:70%">
+          <div class="map-pin-label">RT550 Swap × 156</div>
+          <div class="map-pin-dot orange"></div>
+        </div>
+
+        <div class="map-top-bar">
+          <div class="map-filter-btn active">All Projects</div>
+          <div class="map-filter-btn">Site 4421</div>
+          <div class="map-filter-btn">Today</div>
+        </div>
+
+        <div class="map-legend">
+          <h4>📍 Photo Locations</h4>
+          <div class="map-legend-items">
+            <div class="map-legend-item">
+              <div class="map-legend-dot" style="background:var(--teal)"></div>
+              Site 4421 (247)
+            </div>
+            <div class="map-legend-item">
+              <div class="map-legend-dot" style="background:var(--orange)"></div>
+              Other Projects (245)
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ 8. EXPORT SCREEN ═══ -->
+    <div class="screen" id="screen-export">
+      <div class="screen-content">
+        <div class="back-btn" onclick="navigateTo('project')">‹ Back to Project</div>
+        <h2 style="font-size:24px;font-weight:700;margin-bottom:4px">Export Report</h2>
+        <p style="font-size:13px;color:var(--text-dim);margin-bottom:20px">AT&T Tower Build — Site 4421</p>
+
+        <div class="export-preview">
+          <div class="export-preview-header">
+            <div class="pdf-icon">PDF</div>
+            <div>
+              <div style="font-size:15px;font-weight:600">Site 4421 — Full Report</div>
+              <div style="font-size:12px;color:var(--text-dim)">247 photos • 12 folders • ~48 pages</div>
+            </div>
+          </div>
+          <div class="export-preview-body">
+            <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px">PREVIEW</div>
+            <div class="export-preview-line" style="width:60%"></div>
+            <div class="export-preview-line" style="width:80%"></div>
+            <div class="export-preview-img-row">
+              <div class="export-preview-img" style="background:rgba(0,212,170,0.08)">🗼</div>
+              <div class="export-preview-img" style="background:rgba(255,140,66,0.08)">📡</div>
+              <div class="export-preview-img" style="background:rgba(100,100,200,0.08)">🔧</div>
+            </div>
+            <div class="export-preview-line" style="width:90%"></div>
+            <div class="export-preview-line" style="width:45%"></div>
+            <div style="font-size:10px;color:#2d3748;text-align:center;margin-top:8px">
+              📍 Map • 📋 Metadata • 📸 All Photos
+            </div>
+          </div>
+        </div>
+
+        <div class="section-label">Export Options</div>
+        <div class="export-options">
+          <div class="export-option">
+            <div class="export-icon" style="background:rgba(239,68,68,0.1)">📄</div>
+            <div class="export-info">
+              <h4>PDF Report</h4>
+              <p>Full report with photos, metadata, and map</p>
+            </div>
+            <span style="color:var(--teal);font-size:14px">›</span>
+          </div>
+
+          <div class="export-option">
+            <div class="export-icon" style="background:rgba(139,92,246,0.1)">📦</div>
+            <div class="export-info">
+              <h4>ZIP Archive</h4>
+              <p>All photos with folder structure preserved</p>
+            </div>
+            <span style="color:var(--teal);font-size:14px">›</span>
+          </div>
+
+          <div class="export-option">
+            <div class="export-icon" style="background:rgba(0,212,170,0.1)">📤</div>
+            <div class="export-info">
+              <h4>Share Project</h4>
+              <p>Generate shareable link or send via email</p>
+            </div>
+            <span style="color:var(--teal);font-size:14px">›</span>
+          </div>
+
+          <div class="export-option">
+            <div class="export-icon" style="background:rgba(255,140,66,0.1)">☁️</div>
+            <div class="export-info">
+              <h4>Cloud Backup</h4>
+              <p>Upload to cloud storage (Google Drive, iCloud)</p>
+            </div>
+            <span style="color:var(--teal);font-size:14px">›</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══ NEW PROJECT MODAL ═══ -->
+  <div class="modal-overlay" id="newProjectModal">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2>New Project</h2>
+      <p class="modal-sub">Create from template</p>
+
+      <div class="form-group">
+        <label>Template</label>
+        <select>
+          <option>🗼 Tower Installation</option>
+          <option>📡 Small Cell Deploy</option>
+          <option>🔧 Maintenance Visit</option>
+          <option>🏗️ Construction Progress</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Project Name</label>
+        <input type="text" placeholder="e.g. AT&T Site 5502" value="">
+      </div>
+
+      <div class="form-group">
+        <label>Location (optional)</label>
+        <input type="text" placeholder="Address or coordinates">
+      </div>
+
+      <button class="btn-primary" onclick="hideNewProjectModal()">Create Project</button>
+      <button class="btn-secondary" onclick="hideNewProjectModal()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ═══ TAB BAR ═══ -->
+  <div class="tab-bar">
+    <div class="tab-item active" onclick="switchTab('home', this)">
+      <span class="tab-icon">🏠</span>
+      <span class="tab-label">Home</span>
+    </div>
+    <div class="tab-item" onclick="switchTab('camera', this)">
+      <span class="tab-icon">📸</span>
+      <span class="tab-label">Camera</span>
+    </div>
+    <div class="tab-item" onclick="switchTab('templates', this)">
+      <span class="tab-icon">📋</span>
+      <span class="tab-label">Templates</span>
+    </div>
+    <div class="tab-item" onclick="switchTab('map', this)">
+      <span class="tab-icon">🗺️</span>
+      <span class="tab-label">Map</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Navigation ──
+const screens = ['home', 'project', 'camera', 'templates', 'gallery', 'map', 'export'];
+let currentScreen = 'home';
+
+function navigateTo(screen) {
+  document.querySelectorAll('.screen').forEach(s => {
+    s.classList.remove('active');
+  });
+  const el = document.getElementById('screen-' + screen);
+  if (el) {
+    el.classList.add('active');
+    el.scrollTop = 0;
+  }
+  currentScreen = screen;
+
+  // Update tab bar
+  const tabMap = { home:'home', project:'home', camera:'camera', templates:'templates', map:'map', gallery:'home', export:'home' };
+  document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+  const tabs = document.querySelectorAll('.tab-item');
+  const tabIndex = { home:0, camera:1, templates:2, map:3 };
+  const idx = tabIndex[tabMap[screen]];
+  if (idx !== undefined) tabs[idx].classList.add('active');
+}
+
+function switchTab(screen, el) {
+  navigateTo(screen);
+}
+
+// ── Folder toggle ──
+function toggleFolder(el) {
+  el.classList.toggle('expanded');
+  const sub = el.nextElementSibling;
+  if (sub && sub.classList.contains('subfolder-list')) {
+    sub.classList.toggle('open');
+  }
+}
+
+// ── Camera flash ──
+function capturePhoto() {
+  const flash = document.getElementById('cameraFlash');
+  flash.style.animation = 'flash-capture 0.4s ease';
+  setTimeout(() => { flash.style.animation = ''; }, 500);
+  // Update counter
+  const badge = document.querySelector('.photo-counter-badge');
+  badge.textContent = parseInt(badge.textContent) + 1;
+}
+
+function toggleFlash(el) {
+  el.classList.toggle('flash-on');
+}
+
+// ── Modal ──
+function showNewProjectModal() {
+  document.getElementById('newProjectModal').classList.add('visible');
+}
+function hideNewProjectModal() {
+  document.getElementById('newProjectModal').classList.remove('visible');
+}
+
+// ── Generate gallery ──
+const galleryColors = [
+  'rgba(0,212,170,0.12)', 'rgba(255,140,66,0.12)', 'rgba(99,102,241,0.12)',
+  'rgba(236,72,153,0.12)', 'rgba(34,211,238,0.12)', 'rgba(163,230,53,0.12)',
+];
+const galleryIcons = ['🗼','📡','🔧','⚡','🔩','📐','🏗️','🔌','📏','🛠️','📎','🧲','🪛','🔋','⛓️','📸','🔦','🧰'];
+const grid = document.getElementById('galleryGrid');
+for (let i = 0; i < 18; i++) {
+  const h = Math.floor(Math.random()*12 + 8);
+  const m = String(Math.floor(Math.random()*60)).padStart(2,'0');
+  const item = document.createElement('div');
+  item.className = 'gallery-item';
+  item.innerHTML = `
+    <div class="gallery-bg" style="background:${galleryColors[i % galleryColors.length]}">${galleryIcons[i % galleryIcons.length]}</div>
+    <div class="gallery-overlay">
+      <span class="gallery-time">${h}:${m}</span>
+      <span class="gallery-pin">📍</span>
+    </div>
+  `;
+  grid.appendChild(item);
+}
+
+// ── Map filter interactivity ──
+document.querySelectorAll('.map-filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.map-filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+
+// ── Camera mode strip ──
+document.querySelectorAll('.camera-mode-strip span').forEach(m => {
+  m.addEventListener('click', () => {
+    document.querySelectorAll('.camera-mode-strip span').forEach(s => s.classList.remove('active'));
+    m.classList.add('active');
+  });
+});
+</script>
+
+</body>
+</html>
